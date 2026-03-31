@@ -22,16 +22,19 @@ def create_book_link(title, author):
     query = urllib.parse.quote_plus(f"{title} {author}")
     return f"https://www.google.com/search?q={query}"
 
+
 def restore_session():
-    if "access_token" in st.session_state and "refresh_token" in st.session_state:
-        try:
-            supabase.auth.set_session(
-                st.session_state["access_token"],
-                st.session_state["refresh_token"]
-            )
-        except Exception:
-            st.session_state.pop("access_token", None)
-            st.session_state.pop("refresh_token", None)
+    if st.session_state.get("remember_me"):
+        if "access_token" in st.session_state and "refresh_token" in st.session_state:
+            try:
+                supabase.auth.set_session(
+                    st.session_state["access_token"],
+                    st.session_state["refresh_token"]
+                )
+            except Exception:
+                st.session_state.pop("access_token", None)
+                st.session_state.pop("refresh_token", None)
+                st.session_state.pop("remember_me", None)
 
 
 def get_current_user():
@@ -78,6 +81,29 @@ def delete_book(user_id, book_id):
     )
 
 
+def search_books_openlibrary(query):
+    if not query.strip():
+        return [], "Please enter a book title."
+
+    url = "https://openlibrary.org/search.json"
+
+    try:
+        response = requests.get(url, params={"q": query.strip()}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+
+        docs = data.get("docs", [])
+        if not docs:
+            return [], "No results found."
+
+        return docs[:10], None
+
+    except requests.exceptions.RequestException as e:
+        return [], f"Search failed: {e}"
+    except Exception as e:
+        return [], f"Unexpected error: {e}"
+
+
 def search_wikipedia_book(title):
     try:
         search_url = "https://tr.wikipedia.org/w/api.php"
@@ -98,65 +124,32 @@ def search_wikipedia_book(title):
 
         page_title = results[0]["title"]
 
+        page_url = "https://tr.wikipedia.org/w/api.php"
+        page_params = {
+            "action": "query",
+            "prop": "extracts",
+            "exintro": True,
+            "titles": page_title,
+            "format": "json"
+        }
+
+        response = requests.get(page_url, params=page_params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
+
+        pages = data.get("query", {}).get("pages", {})
+        page = next(iter(pages.values()))
+
+        extract = page.get("extract", "")
+
         return {
             "title": page_title,
+            "summary": extract,
             "info_link": f"https://tr.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
         }
 
     except Exception:
         return None
-            
-            page_title = results[0]["title"]
-            page_url = "https://tr.wikipedia.org/w/api.php"
-            page_params = {
-                "action": "query",
-                "prop": "extracts",
-                "exintro": True,
-                "titles": page_title,
-                "format": "json"
-            }
-
-            response = requests.get(page_url, params=page_params)
-            data = response.json()
-
-            pages = data.get("query", {}).get("pages", {})
-            page = next(iter(pages.values()))
-
-            extract = page.get("extract", "")
-
-            return {
-                "title": page_title,
-                "summary": extract,
-                "info_link": f"https://tr.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
-            }
-
-        except Exception:
-            return None
-    if not query.strip():
-        return [], "Please enter a book title."
-
-    url = "https://openlibrary.org/search.json"
-
-    try:
-        response = requests.get(url, params={"q": query}, timeout=10)
-        response.raise_for_status()
-        data = response.json()
-
-        docs = data.get("docs", [])
-        if not docs:
-            return [], "No results found."
-
-        return docs[:10], None
-
-    except Exception as e:
-        return [], f"Search failed: {e}"
-
-        return items, None
-
-    except requests.exceptions.RequestException as e:
-        return [], f"Search failed: {e}"
-    except Exception as e:
-        return [], f"Unexpected error: {e}"
 
 
 def extract_book_data(item):
@@ -202,7 +195,6 @@ user = get_current_user()
 
 st.title("📚 My Library")
 
-
 if not user:
     tab1, tab2 = st.tabs(["Log In", "Sign Up"])
 
@@ -210,9 +202,9 @@ if not user:
         st.subheader("Log In")
         login_email = st.text_input("Email", key="login_email")
         login_password = st.text_input("Password", type="password", key="login_password")
-        remember_me = st.checkbox("Remember Me")
+        remember_me = st.checkbox("Remember Me", key="remember_me_checkbox")
 
-        if st.button("Log In"):
+        if st.button("Log In", key="login_button_main"):
             try:
                 response = supabase.auth.sign_in_with_password({
                     "email": login_email,
@@ -236,7 +228,7 @@ if not user:
         signup_email = st.text_input("Email", key="signup_email")
         signup_password = st.text_input("Password", type="password", key="signup_password")
 
-        if st.button("Create Account"):
+        if st.button("Create Account", key="signup_button_main"):
             try:
                 supabase.auth.sign_up({
                     "email": signup_email,
@@ -250,7 +242,7 @@ if not user:
 
 st.success(f"Logged in as: {user.email}")
 
-if st.button("Log Out"):
+if st.button("Log Out", key="logout_button_main"):
     try:
         supabase.auth.sign_out()
     except Exception:
@@ -340,6 +332,7 @@ if entry_mode == "Auto Fill from Web":
 
             if selected_data["info_link"]:
                 st.markdown(f"[Open book page]({selected_data['info_link']})")
+
 default_data = st.session_state.selected_book_data if entry_mode == "Auto Fill from Web" else {
     "title": "",
     "author": "",
@@ -395,6 +388,7 @@ with st.form("add_book_form", clear_on_submit=(entry_mode == "Manual Entry")):
                 "info_link": "",
             }
             st.session_state.search_results = []
+            st.session_state.search_error = None
             st.success(f'"{title}" has been added.')
             st.rerun()
 
@@ -404,13 +398,13 @@ st.subheader("Search and Filter")
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    search_text = st.text_input("Search in my library")
+    search_text = st.text_input("Search in my library", key="library_search_text")
 
 with col2:
-    category_filter = st.selectbox("Filter by Category", ["All"] + CATEGORIES)
+    category_filter = st.selectbox("Filter by Category", ["All"] + CATEGORIES, key="category_filter_select")
 
 with col3:
-    status_filter = st.selectbox("Filter by Status", ["All"] + STATUSES)
+    status_filter = st.selectbox("Filter by Status", ["All"] + STATUSES, key="status_filter_select")
 
 filtered_books = []
 for book in books:
