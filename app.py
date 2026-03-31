@@ -264,10 +264,12 @@ entry_mode = st.radio(
 
 if entry_mode == "Auto Fill from Web":
     web_search_query = st.text_input(
-        "Search by book title";
-        if st.button("Search Book", key="web_search_button_unique"):
-    results, error = search_books_openlibrary(web_search_query)
+        "Search by book title",
+        key="web_search_query_unique"
+    )
 
+    if st.button("Search Book", key="web_search_button_unique"):
+        results, error = search_books_openlibrary(web_search_query)
     if not results:
         wiki_data = search_wikipedia_book(web_search_query)
 
