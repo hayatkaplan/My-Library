@@ -2,6 +2,7 @@ import streamlit as st
 import urllib.parse
 import requests
 import re
+from bs4 import BeautifulSoup
 from supabase import create_client, Client
 
 st.set_page_config(page_title="My Library", page_icon="📚", layout="wide")
