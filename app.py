@@ -78,23 +78,33 @@ def delete_book(user_id, book_id):
     )
 
 
-def search_books_openlibrary(query):
-    def search_wikipedia_book(title):
-        try:
-            search_url = "https://tr.wikipedia.org/w/api.php"
-            search_params = {
-                "action": "query",
-                "list": "search",
-                "srsearch": title,
-                "format": "json"
-            }
+def search_wikipedia_book(title):
+    try:
+        search_url = "https://tr.wikipedia.org/w/api.php"
+        search_params = {
+            "action": "query",
+            "list": "search",
+            "srsearch": title,
+            "format": "json"
+        }
 
-            response = requests.get(search_url, params=search_params)
-            data = response.json()
+        response = requests.get(search_url, params=search_params, timeout=15)
+        response.raise_for_status()
+        data = response.json()
 
-            results = data.get("query", {}).get("search", [])
-            if not results:
-                return None
+        results = data.get("query", {}).get("search", [])
+        if not results:
+            return None
+
+        page_title = results[0]["title"]
+
+        return {
+            "title": page_title,
+            "info_link": f"https://tr.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
+        }
+
+    except Exception:
+        return None
 
             page_title = results[0]["title"]
 
