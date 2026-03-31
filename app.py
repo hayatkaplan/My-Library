@@ -1,6 +1,7 @@
 import streamlit as st
 import urllib.parse
 import requests
+import re
 from supabase import create_client, Client
 
 st.set_page_config(page_title="My Library", page_icon="📚", layout="wide")
@@ -254,6 +255,7 @@ if st.button("Log Out", key="logout_button_main"):
     st.session_state.edit_id = None
     st.rerun()
 
+
 books = get_books(user.id)
 
 st.subheader("Add a New Book")
@@ -263,7 +265,76 @@ entry_mode = st.radio(
     ["Manual Entry", "Auto Fill from Web"],
     horizontal=True
 )
+import re
 
+def normalize_text(text):
+    text = text.lower().strip()
+    replacements = {
+        "ç": "c", "ğ": "g", "ı": "i", "ö": "o", "ş": "s", "ü": "u",
+        "Ç": "c", "Ğ": "g", "İ": "i", "Ö": "o", "Ş": "s", "Ü": "u",
+    }
+    for tr, en in replacements.items():
+        text = text.replace(tr, en)
+    text = re.sub(r"[^a-z0-9\s]", "", text)
+    text = re.sub(r"\s+", " ", text).strip()
+    return text
+
+
+def search_books_openlibrary_best_match(query):
+    if not query.strip():
+        return None, "Please enter a book title."
+
+    url = "https://openlibrary.org/search.json"
+
+    try:
+        response = requests.get(
+            url,
+            params={"title": query.strip(), "limit": 10},
+            timeout=10
+        )
+        response.raise_for_status()
+        data = response.json()
+        docs = data.get("docs", [])
+
+        if not docs:
+            return None, "No results found."
+
+        normalized_query = normalize_text(query)
+        best_item = None
+        best_score = -1
+
+        for item in docs:
+            title = item.get("title", "") or ""
+            normalized_title = normalize_text(title)
+
+            score = 0
+
+            if normalized_title == normalized_query:
+                score += 100
+            elif normalized_query in normalized_title:
+                score += 60
+            elif normalized_title in normalized_query:
+                score += 40
+
+            if item.get("author_name"):
+                score += 10
+            if item.get("publisher"):
+                score += 10
+            if item.get("first_publish_year"):
+                score += 5
+            if item.get("cover_i"):
+                score += 5
+
+            if score > best_score:
+                best_score = score
+                best_item = item
+
+        return best_item, None
+
+    except requests.exceptions.RequestException as e:
+        return None, f"Search failed: {e}"
+    except Exception as e:
+        return None, f"Unexpected error: {e}"
 if entry_mode == "Auto Fill from Web":
     web_search_query = st.text_input(
         "Type the book title and let the app fill the details",
