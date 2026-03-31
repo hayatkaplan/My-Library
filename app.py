@@ -235,10 +235,30 @@ if entry_mode == "Auto Fill from Web":
             publisher = info.get("publisher", "Unknown publisher")
             return f"{title} — {authors} — {publisher}"
 
+   if entry_mode == "Auto Fill from Web":
+    search_query = st.text_input("Search by book title", key="google_books_search")
+
+    if st.button("Search Book", key="search_book_button"):
+        results, error = search_google_books(search_query)
+        st.session_state.search_results = results
+        st.session_state.search_error = error
+
+    if st.session_state.search_error:
+        st.warning(st.session_state.search_error)
+
+    if st.session_state.search_results:
+        def format_result(item):
+            info = item.get("volumeInfo", {})
+            title = info.get("title", "Unknown title")
+            authors = ", ".join(info.get("authors", [])) if info.get("authors") else "Unknown author"
+            publisher = info.get("publisher", "Unknown publisher")
+            return f"{title} — {authors} — {publisher}"
+
         selected_item = st.selectbox(
             "Select a book",
             options=st.session_state.search_results,
-            format_func=format_result
+            format_func=format_result,
+            key="google_books_result_select"
         )
 
         st.session_state.selected_book_data = extract_book_data(selected_item)
@@ -262,8 +282,8 @@ if entry_mode == "Auto Fill from Web":
 
     col_a, col_b = st.columns([1, 3])
     with col_a:
-        if st.button("Search Book"):
-            st.session_state.search_results = search_google_books(search_query)
+       if st.button("Search Book", key="search_book_button"):
+           search_query = st.text_input("Search by book title", key="google_books_search")
 
     if st.session_state.search_results:
         options = []
