@@ -270,35 +270,7 @@ if entry_mode == "Auto Fill from Web":
 
     if st.button("Search Book", key="web_search_button_unique"):
         results, error = search_books_openlibrary(web_search_query)
-    if not results:
-        wiki_data = search_wikipedia_book(web_search_query)
 
-        if wiki_data:
-            st.session_state.selected_book_data = {
-                "title": wiki_data["title"],
-                "author": "",
-                "publisher": "",
-                "page_count": 1,
-                "published_date": "",
-                "cover_url": "",
-                "info_link": wiki_data["info_link"],
-            }
-            st.session_state.search_results = []
-            st.session_state.search_error = None
-            st.info("Book found via Wikipedia. Some fields may be incomplete.")
-        else:
-            st.session_state.search_results = []
-            st.session_state.search_error = "No results found anywhere."
-    else:
-        st.session_state.search_results = results
-        st.session_state.search_error = error
-        key="web_search_query_unique"
-    )
-
-    if st.button("Search Book", key="web_search_button_unique"):
-        results, error = search_books_openlibrary(web_search_query)
-
-        # Eğer Open Library boş dönerse → Wikipedia kullan
         if not results:
             wiki_data = search_wikipedia_book(web_search_query)
 
@@ -314,14 +286,14 @@ if entry_mode == "Auto Fill from Web":
                 }
                 st.session_state.search_results = []
                 st.session_state.search_error = None
-
                 st.info("Book found via Wikipedia. Some fields may be incomplete.")
             else:
                 st.session_state.search_results = []
                 st.session_state.search_error = "No results found anywhere."
-       else:
-    st.session_state.search_results = results
-    st.session_state.search_error = error
+        else:
+            st.session_state.search_results = results
+            st.session_state.search_error = error
+
     if st.session_state.search_error:
         st.warning(st.session_state.search_error)
 
@@ -329,8 +301,9 @@ if entry_mode == "Auto Fill from Web":
         def format_result(item):
             title = item.get("title", "Unknown title")
             authors = ", ".join(item.get("author_name", [])) if item.get("author_name") else "Unknown author"
-            publisher = ", ".join(item.get("publisher", [])) if item.get("publisher") else "Unknown publisher"
-            return f"{title} — {authors} — {publisher}"
+            publisher = ", ".join(item.get("publisher", [])[:1]) if item.get("publisher") else "Unknown publisher"
+            year = item.get("first_publish_year", "")
+            return f"{title} — {authors} — {publisher} — {year}"
 
         selected_item = st.selectbox(
             "Select a book",
@@ -349,11 +322,11 @@ if entry_mode == "Auto Fill from Web":
                 st.image(selected_data["cover_url"], width=140)
 
         with col2:
-            st.write(f"**Title:** {selected_data['title']}")
-            st.write(f"**Author:** {selected_data['author']}")
-            st.write(f"**Publisher:** {selected_data['publisher']}")
-            st.write(f"**Published Date:** {selected_data['published_date']}")
-            st.write(f"**Page Count:** {selected_data['page_count']}")
+            st.write(f"**Title:** {selected_data['title'] or 'Unknown'}")
+            st.write(f"**Author:** {selected_data['author'] or 'Unknown'}")
+            st.write(f"**Publisher:** {selected_data['publisher'] or 'Unknown'}")
+            st.write(f"**Published Date:** {selected_data['published_date'] or 'Unknown'}")
+            st.write(f"**Page Count:** {selected_data['page_count'] or 'Unknown'}")
 
             if selected_data["info_link"]:
                 st.markdown(f"[Open book page]({selected_data['info_link']})")
