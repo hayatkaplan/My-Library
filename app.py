@@ -81,21 +81,29 @@ def delete_book(user_id, book_id):
 
 def search_google_books(query):
     if not query.strip():
-        return []
+        return [], "Please enter a book title."
 
     url = "https://www.googleapis.com/books/v1/volumes"
     params = {
-        "q": query,
-        "maxResults": 5
+        "q": query.strip(),
+        "maxResults": 10
     }
 
     try:
-        response = requests.get(url, params=params, timeout=10)
+        response = requests.get(url, params=params, timeout=15)
         response.raise_for_status()
         data = response.json()
-        return data.get("items", [])
-    except Exception:
-        return []
+
+        items = data.get("items", [])
+        if not items:
+            return [], "No results found."
+
+        return items, None
+
+    except requests.exceptions.RequestException as e:
+        return [], f"Search failed: {e}"
+    except Exception as e:
+        return [], f"Unexpected error: {e}"
 
 
 def extract_book_data(item):
@@ -112,14 +120,14 @@ def extract_book_data(item):
     )
 
     return {
-        "title": volume_info.get("title", ""),
+        "title": volume_info.get("title", "") or "",
         "author": author_text,
-        "publisher": volume_info.get("publisher", ""),
+        "publisher": volume_info.get("publisher", "") or "",
         "page_count": volume_info.get("pageCount", 1) or 1,
-        "published_date": volume_info.get("publishedDate", ""),
+        "published_date": volume_info.get("publishedDate", "") or "",
         "cover_url": cover_url,
-        "info_link": volume_info.get("infoLink", ""),
-    }
+        "info_link": volume_info.get("infoLink", "") or "",
+    }}
 
 
 restore_session()
@@ -129,6 +137,9 @@ if "edit_id" not in st.session_state:
 
 if "search_results" not in st.session_state:
     st.session_state.search_results = []
+
+if "search_error" not in st.session_state:
+    st.session_state.search_error = None
 
 if "selected_book_data" not in st.session_state:
     st.session_state.selected_book_data = {
@@ -206,7 +217,48 @@ entry_mode = st.radio(
 )
 
 if entry_mode == "Auto Fill from Web":
-    search_query = st.text_input("Search by book title")
+    search_query = st.text_input("Search by book title", key="google_books_search")
+
+    if st.button("Search Book"):
+        results, error = search_google_books(search_query)
+        st.session_state.search_results = results
+        st.session_state.search_error = error
+
+    if st.session_state.search_error:
+        st.warning(st.session_state.search_error)
+
+    if st.session_state.search_results:
+        def format_result(item):
+            info = item.get("volumeInfo", {})
+            title = info.get("title", "Unknown title")
+            authors = ", ".join(info.get("authors", [])) if info.get("authors") else "Unknown author"
+            publisher = info.get("publisher", "Unknown publisher")
+            return f"{title} — {authors} — {publisher}"
+
+        selected_item = st.selectbox(
+            "Select a book",
+            options=st.session_state.search_results,
+            format_func=format_result
+        )
+
+        st.session_state.selected_book_data = extract_book_data(selected_item)
+        selected_data = st.session_state.selected_book_data
+
+        col1, col2 = st.columns([1, 3])
+
+        with col1:
+            if selected_data["cover_url"]:
+                st.image(selected_data["cover_url"], width=140)
+
+        with col2:
+            st.write(f"**Title:** {selected_data['title'] or 'Unknown'}")
+            st.write(f"**Author:** {selected_data['author'] or 'Unknown'}")
+            st.write(f"**Publisher:** {selected_data['publisher'] or 'Unknown'}")
+            st.write(f"**Published Date:** {selected_data['published_date'] or 'Unknown'}")
+            st.write(f"**Page Count:** {selected_data['page_count'] or 'Unknown'}")
+
+            if selected_data["info_link"]:
+                st.markdown(f"[Open Google Books page]({selected_data['info_link']})")
 
     col_a, col_b = st.columns([1, 3])
     with col_a:
