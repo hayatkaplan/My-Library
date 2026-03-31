@@ -235,7 +235,7 @@ if entry_mode == "Auto Fill from Web":
             publisher = info.get("publisher", "Unknown publisher")
             return f"{title} — {authors} — {publisher}"
 
-   if entry_mode == "Auto Fill from Web":
+  if entry_mode == "Auto Fill from Web":
     search_query = st.text_input("Search by book title", key="google_books_search")
 
     if st.button("Search Book", key="search_book_button"):
