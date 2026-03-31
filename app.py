@@ -235,11 +235,14 @@ if entry_mode == "Auto Fill from Web":
             publisher = info.get("publisher", "Unknown publisher")
             return f"{title} — {authors} — {publisher}"
 
-    if entry_mode == "Auto Fill from Web":
-        search_query = st.text_input("Search by book title", key="google_books_search")
+if entry_mode == "Auto Fill from Web":
+    web_search_query = st.text_input(
+        "Search by book title",
+        key="web_search_query_unique"
+    )
 
-    if st.button("Search Book", key="search_book_button"):
-        results, error = search_google_books(search_query)
+    if st.button("Search Book", key="web_search_button_unique"):
+        results, error = search_google_books(web_search_query)
         st.session_state.search_results = results
         st.session_state.search_error = error
 
@@ -258,7 +261,7 @@ if entry_mode == "Auto Fill from Web":
             "Select a book",
             options=st.session_state.search_results,
             format_func=format_result,
-            key="google_books_result_select"
+            key="web_search_result_unique"
         )
 
         st.session_state.selected_book_data = extract_book_data(selected_item)
@@ -279,35 +282,6 @@ if entry_mode == "Auto Fill from Web":
 
             if selected_data["info_link"]:
                 st.markdown(f"[Open Google Books page]({selected_data['info_link']})")
-
-    col_a, col_b = st.columns([1, 3])
-    with col_a:
-       if st.button("Search Book", key="search_book_button"):
-           search_query = st.text_input("Search by book title", key="google_books_search")
-
-    if st.session_state.search_results:
-        options = []
-        for idx, item in enumerate(st.session_state.search_results):
-            data = extract_book_data(item)
-            label = f"{data['title']} - {data['author']}" if data["author"] else data["title"]
-            options.append((idx, label))
-
-        selected_label = st.selectbox(
-            "Select a book",
-            options=[label for _, label in options]
-        )
-
-        selected_index = next(idx for idx, label in options if label == selected_label)
-        selected_item = st.session_state.search_results[selected_index]
-        st.session_state.selected_book_data = extract_book_data(selected_item)
-
-        selected_data = st.session_state.selected_book_data
-
-        if selected_data["cover_url"]:
-            st.image(selected_data["cover_url"], width=140)
-
-        if selected_data["info_link"]:
-            st.markdown(f"[Open Google Books page]({selected_data['info_link']})")
 
 default_data = st.session_state.selected_book_data if entry_mode == "Auto Fill from Web" else {
     "title": "",
