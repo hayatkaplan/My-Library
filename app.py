@@ -127,7 +127,7 @@ def extract_book_data(item):
         "published_date": volume_info.get("publishedDate", "") or "",
         "cover_url": cover_url,
         "info_link": volume_info.get("infoLink", "") or "",
-    }}
+    }
 
 
 restore_session()
