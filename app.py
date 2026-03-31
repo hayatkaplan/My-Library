@@ -197,47 +197,46 @@ if not user:
     tab1, tab2 = st.tabs(["Log In", "Sign Up"])
 
     with tab1:
-        st.subheader("Log In")
-        login_email = st.text_input("Email", key="login_email")
-        login_password = st.text_input("Password", type="password", key="login_password")
-        remember_me = st.checkbox("Remember Me")
+    st.subheader("Log In")
+    login_email = st.text_input("Email", key="login_email")
+    login_password = st.text_input("Password", type="password", key="login_password")
+    remember_me = st.checkbox("Remember Me")
 
-        if st.button("Log In"):
-            try:
-                response = supabase.auth.sign_in_with_password({
-                    "email": login_email,
-                    "password": login_password
+    if st.button("Log In"):
+        try:
+            response = supabase.auth.sign_in_with_password({
+                "email": login_email,
+                "password": login_password
+            })
 
-                # session'a kaydet
-                st.session_state["access_token"] = response.session.access_token
-                st.session_state["refresh_token"] = response.session.refresh_token
+            st.session_state["access_token"] = response.session.access_token
+            st.session_state["refresh_token"] = response.session.refresh_token
 
-                # remember me
-                if remember_me:
-                    st.session_state["remember_me"] = True
+            if remember_me:
+                st.session_state["remember_me"] = True
 
-                st.success("Logged in successfully.")
-                st.rerun()
+            st.success("Logged in successfully.")
+            st.rerun()
 
-                except Exception as e:
-                st.error(f"Login failed: {e}")
+        except Exception as e:
+            st.error(f"Login failed: {e}")
 
-    with tab2:
-        st.subheader("Sign Up")
-        signup_email = st.text_input("Email", key="signup_email")
-        signup_password = st.text_input("Password", type="password", key="signup_password")
+with tab2:
+    st.subheader("Sign Up")
+    signup_email = st.text_input("Email", key="signup_email")
+    signup_password = st.text_input("Password", type="password", key="signup_password")
 
-        if st.button("Create Account"):
-            try:
-                supabase.auth.sign_up({
-                    "email": signup_email,
-                    "password": signup_password
-                })
-                st.success("Account created. You can now log in.")
-            except Exception as e:
-                st.error(f"Sign up failed: {e}")
+    if st.button("Create Account"):
+        try:
+            supabase.auth.sign_up({
+                "email": signup_email,
+                "password": signup_password
+            })
+            st.success("Account created. You can now log in.")
+        except Exception as e:
+            st.error(f"Sign up failed: {e}")
 
-    st.stop()
+st.stop()
 
 st.success(f"Logged in as: {user.email}")
 
