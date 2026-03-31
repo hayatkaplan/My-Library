@@ -193,14 +193,6 @@ user = get_current_user()
 
 st.title("📚 My Library")
 
-if not user:
-    tab1, tab2 = st.tabs(["Log In", "Sign Up"])
-
-with tab1:
-    st.subheader("Log In")
-    login_email = st.text_input("Email", key="login_email")
-    login_password = st.text_input("Password", type="password", key="login_password")
-    remember_me = st.checkbox("Remember Me")
 
 if not user:
     tab1, tab2 = st.tabs(["Log In", "Sign Up"])
