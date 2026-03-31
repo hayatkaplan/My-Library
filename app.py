@@ -211,32 +211,13 @@ entry_mode = st.radio(
 )
 
 if entry_mode == "Auto Fill from Web":
-    search_query = st.text_input("Search by book title", key="google_books_search")
-
-    if st.button("Search Book"):
-        results, error = search_google_books(search_query)
-        st.session_state.search_results = results
-        st.session_state.search_error = error
-
-    if st.session_state.search_error:
-        st.warning(st.session_state.search_error)
-
-    if st.session_state.search_results:
-        def format_result(item):
-            info = item.get("volumeInfo", {})
-            title = info.get("title", "Unknown title")
-            authors = ", ".join(info.get("authors", [])) if info.get("authors") else "Unknown author"
-            publisher = info.get("publisher", "Unknown publisher")
-            return f"{title} — {authors} — {publisher}"
-
-if entry_mode == "Auto Fill from Web":
     web_search_query = st.text_input(
         "Search by book title",
         key="web_search_query_unique"
     )
 
     if st.button("Search Book", key="web_search_button_unique"):
-        results, error = search_books_openlibrary(web_search_query) 
+        results, error = search_books_openlibrary(web_search_query)
         st.session_state.search_results = results
         st.session_state.search_error = error
 
@@ -245,10 +226,9 @@ if entry_mode == "Auto Fill from Web":
 
     if st.session_state.search_results:
         def format_result(item):
-            info = item.get("volumeInfo", {})
-            title = info.get("title", "Unknown title")
-            authors = ", ".join(info.get("authors", [])) if info.get("authors") else "Unknown author"
-            publisher = info.get("publisher", "Unknown publisher")
+            title = item.get("title", "Unknown title")
+            authors = ", ".join(item.get("author_name", [])) if item.get("author_name") else "Unknown author"
+            publisher = ", ".join(item.get("publisher", [])) if item.get("publisher") else "Unknown publisher"
             return f"{title} — {authors} — {publisher}"
 
         selected_item = st.selectbox(
@@ -268,15 +248,14 @@ if entry_mode == "Auto Fill from Web":
                 st.image(selected_data["cover_url"], width=140)
 
         with col2:
-            st.write(f"**Title:** {selected_data['title'] or 'Unknown'}")
-            st.write(f"**Author:** {selected_data['author'] or 'Unknown'}")
-            st.write(f"**Publisher:** {selected_data['publisher'] or 'Unknown'}")
-            st.write(f"**Published Date:** {selected_data['published_date'] or 'Unknown'}")
-            st.write(f"**Page Count:** {selected_data['page_count'] or 'Unknown'}")
+            st.write(f"**Title:** {selected_data['title']}")
+            st.write(f"**Author:** {selected_data['author']}")
+            st.write(f"**Publisher:** {selected_data['publisher']}")
+            st.write(f"**Published Date:** {selected_data['published_date']}")
+            st.write(f"**Page Count:** {selected_data['page_count']}")
 
             if selected_data["info_link"]:
-                st.markdown(f"[Open Google Books page]({selected_data['info_link']})")
-
+                st.markdown(f"[Open book page]({selected_data['info_link']})")
 default_data = st.session_state.selected_book_data if entry_mode == "Auto Fill from Web" else {
     "title": "",
     "author": "",
