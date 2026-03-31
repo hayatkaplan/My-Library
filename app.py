@@ -79,24 +79,25 @@ def delete_book(user_id, book_id):
     )
 
 
-def search_google_books(query):
+def search_books_openlibrary(query):
     if not query.strip():
         return [], "Please enter a book title."
 
-    url = "https://www.googleapis.com/books/v1/volumes"
-    params = {
-        "q": query.strip(),
-        "maxResults": 10
-    }
+    url = "https://openlibrary.org/search.json"
 
     try:
-        response = requests.get(url, params=params, timeout=15)
+        response = requests.get(url, params={"q": query}, timeout=10)
         response.raise_for_status()
         data = response.json()
 
-        items = data.get("items", [])
-        if not items:
+        docs = data.get("docs", [])
+        if not docs:
             return [], "No results found."
+
+        return docs[:10], None
+
+    except Exception as e:
+        return [], f"Search failed: {e}"
 
         return items, None
 
@@ -107,26 +108,19 @@ def search_google_books(query):
 
 
 def extract_book_data(item):
-    volume_info = item.get("volumeInfo", {})
+    author = ", ".join(item.get("author_name", [])) if item.get("author_name") else ""
 
-    authors = volume_info.get("authors", [])
-    author_text = ", ".join(authors) if authors else ""
-
-    image_links = volume_info.get("imageLinks", {})
-    cover_url = (
-        image_links.get("thumbnail")
-        or image_links.get("smallThumbnail")
-        or ""
-    )
+    cover_id = item.get("cover_i")
+    cover_url = f"https://covers.openlibrary.org/b/id/{cover_id}-M.jpg" if cover_id else ""
 
     return {
-        "title": volume_info.get("title", "") or "",
-        "author": author_text,
-        "publisher": volume_info.get("publisher", "") or "",
-        "page_count": volume_info.get("pageCount", 1) or 1,
-        "published_date": volume_info.get("publishedDate", "") or "",
+        "title": item.get("title", "") or "",
+        "author": author,
+        "publisher": ", ".join(item.get("publisher", [])) if item.get("publisher") else "",
+        "page_count": item.get("number_of_pages_median", 1) or 1,
+        "published_date": str(item.get("first_publish_year", "")),
         "cover_url": cover_url,
-        "info_link": volume_info.get("infoLink", "") or "",
+        "info_link": f"https://openlibrary.org{item.get('key')}" if item.get("key") else "",
     }
 
 
@@ -242,7 +236,7 @@ if entry_mode == "Auto Fill from Web":
     )
 
     if st.button("Search Book", key="web_search_button_unique"):
-        results, error = search_google_books(web_search_query)
+        results, error = search_books_openlibrary(web_search_query) 
         st.session_state.search_results = results
         st.session_state.search_error = error
 
