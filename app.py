@@ -89,7 +89,7 @@ def search_books_openlibrary(query):
     url = "https://openlibrary.org/search.json"
 
     try:
-        response = requests.get(url, params={"q": query.strip()}, timeout=10)
+        response = requests.get(url, params={"q": query.strip()}, timeout=20)
         response.raise_for_status()
         data = response.json()
 
@@ -290,7 +290,7 @@ def search_books_openlibrary_best_match(query):
         response = requests.get(
             url,
             params={"title": query.strip(), "limit": 10},
-            timeout=10
+            timeout=20
         )
         response.raise_for_status()
         data = response.json()
