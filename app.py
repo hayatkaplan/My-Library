@@ -264,7 +264,31 @@ entry_mode = st.radio(
 
 if entry_mode == "Auto Fill from Web":
     web_search_query = st.text_input(
-        "Search by book title",
+        "Search by book title",if st.button("Search Book", key="web_search_button_unique"):
+    results, error = search_books_openlibrary(web_search_query)
+
+    if not results:
+        wiki_data = search_wikipedia_book(web_search_query)
+
+        if wiki_data:
+            st.session_state.selected_book_data = {
+                "title": wiki_data["title"],
+                "author": "",
+                "publisher": "",
+                "page_count": 1,
+                "published_date": "",
+                "cover_url": "",
+                "info_link": wiki_data["info_link"],
+            }
+            st.session_state.search_results = []
+            st.session_state.search_error = None
+            st.info("Book found via Wikipedia. Some fields may be incomplete.")
+        else:
+            st.session_state.search_results = []
+            st.session_state.search_error = "No results found anywhere."
+    else:
+        st.session_state.search_results = results
+        st.session_state.search_error = error
         key="web_search_query_unique"
     )
 
@@ -292,13 +316,9 @@ if entry_mode == "Auto Fill from Web":
             else:
                 st.session_state.search_results = []
                 st.session_state.search_error = "No results found anywhere."
-        else:
-            st.session_state.search_results = results
-            st.session_state.search_error = error        results, error = search_books_openlibrary(web_search_query)
-            st.session_state.search_error = error        results, error = search_books_openlibrary(web_search_query)
-        st.session_state.search_results = results
-        st.session_state.search_error = error
-
+       else:
+    st.session_state.search_results = results
+    st.session_state.search_error = error
     if st.session_state.search_error:
         st.warning(st.session_state.search_error)
 
