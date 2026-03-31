@@ -22,7 +22,6 @@ def create_book_link(title, author):
     query = urllib.parse.quote_plus(f"{title} {author}")
     return f"https://www.google.com/search?q={query}"
 
-
 def restore_session():
     if "access_token" in st.session_state and "refresh_token" in st.session_state:
         try:
@@ -80,6 +79,50 @@ def delete_book(user_id, book_id):
 
 
 def search_books_openlibrary(query):
+    def search_wikipedia_book(title):
+        try:
+            search_url = "https://tr.wikipedia.org/w/api.php"
+            search_params = {
+                "action": "query",
+                "list": "search",
+                "srsearch": title,
+                "format": "json"
+            }
+
+            response = requests.get(search_url, params=search_params)
+            data = response.json()
+
+            results = data.get("query", {}).get("search", [])
+            if not results:
+                return None
+
+            page_title = results[0]["title"]
+
+            page_url = "https://tr.wikipedia.org/w/api.php"
+            page_params = {
+                "action": "query",
+                "prop": "extracts",
+                "exintro": True,
+                "titles": page_title,
+                "format": "json"
+            }
+
+            response = requests.get(page_url, params=page_params)
+            data = response.json()
+
+            pages = data.get("query", {}).get("pages", {})
+            page = next(iter(pages.values()))
+
+            extract = page.get("extract", "")
+
+            return {
+                "title": page_title,
+                "summary": extract,
+                "info_link": f"https://tr.wikipedia.org/wiki/{page_title.replace(' ', '_')}"
+            }
+
+        except Exception:
+            return None
     if not query.strip():
         return [], "Please enter a book title."
 
@@ -157,18 +200,26 @@ if not user:
         st.subheader("Log In")
         login_email = st.text_input("Email", key="login_email")
         login_password = st.text_input("Password", type="password", key="login_password")
+        remember_me = st.checkbox("Remember Me")
 
         if st.button("Log In"):
             try:
                 response = supabase.auth.sign_in_with_password({
                     "email": login_email,
                     "password": login_password
-                })
+
+                # session'a kaydet
                 st.session_state["access_token"] = response.session.access_token
                 st.session_state["refresh_token"] = response.session.refresh_token
+
+                # remember me
+                if remember_me:
+                    st.session_state["remember_me"] = True
+
                 st.success("Logged in successfully.")
                 st.rerun()
-            except Exception as e:
+
+                except Exception as e:
                 st.error(f"Login failed: {e}")
 
     with tab2:
@@ -195,8 +246,10 @@ if st.button("Log Out"):
         supabase.auth.sign_out()
     except Exception:
         pass
+
     st.session_state.pop("access_token", None)
     st.session_state.pop("refresh_token", None)
+    st.session_state.pop("remember_me", None)
     st.session_state.edit_id = None
     st.rerun()
 
@@ -218,6 +271,32 @@ if entry_mode == "Auto Fill from Web":
 
     if st.button("Search Book", key="web_search_button_unique"):
         results, error = search_books_openlibrary(web_search_query)
+
+        # Eğer Open Library boş dönerse → Wikipedia kullan
+        if not results:
+            wiki_data = search_wikipedia_book(web_search_query)
+
+            if wiki_data:
+                st.session_state.selected_book_data = {
+                    "title": wiki_data["title"],
+                    "author": "",
+                    "publisher": "",
+                    "page_count": 1,
+                    "published_date": "",
+                    "cover_url": "",
+                    "info_link": wiki_data["info_link"],
+                }
+                st.session_state.search_results = []
+                st.session_state.search_error = None
+
+                st.info("Book found via Wikipedia. Some fields may be incomplete.")
+            else:
+                st.session_state.search_results = []
+                st.session_state.search_error = "No results found anywhere."
+        else:
+            st.session_state.search_results = results
+            st.session_state.search_error = error        results, error = search_books_openlibrary(web_search_query)
+            st.session_state.search_error = error        results, error = search_books_openlibrary(web_search_query)
         st.session_state.search_results = results
         st.session_state.search_error = error
 
